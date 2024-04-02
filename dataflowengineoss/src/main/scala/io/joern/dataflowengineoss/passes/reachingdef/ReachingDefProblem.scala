@@ -247,7 +247,7 @@ class ReachingDefTransferFunction(flowGraph: ReachingDefFlowGraph)
     // taint unharmed.
 
     method.call
-      //.filterNot(x => isGenericMemberAccessName(x.name))
+      .filterNot(x => isGenericMemberAccessName(x.name))
       .map { call =>
         call -> killsForGens(gen(call), allIdentifiers, allCalls)
       }
