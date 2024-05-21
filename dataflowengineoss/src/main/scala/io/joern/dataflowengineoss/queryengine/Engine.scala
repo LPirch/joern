@@ -11,6 +11,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import overflowdb.Edge
 
 import java.util.concurrent.*
+import java.lang.Runtime
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
@@ -25,7 +26,7 @@ class Engine(context: EngineContext) {
   import Engine.*
 
   private val logger: Logger                   = LoggerFactory.getLogger(this.getClass)
-  private val executorService: ExecutorService = Executors.newWorkStealingPool()
+  private val executorService: ExecutorService = Executors.newWorkStealingPool(context.config.numWorkers)
   private val completionService =
     new ExecutorCompletionService[TaskSummary](executorService)
 
@@ -317,13 +318,16 @@ case class EngineContext(semantics: Semantics = DefaultSemantics(), config: Engi
   *   max limit to determine all corresponding arguments at all call sites to the method
   * @param maxOutputArgsExpansion
   *   max limit on number arguments for which tasks will be created for unresolved arguments
+  * @param numWorkers
+  *   number or parallel workers to use
   */
 case class EngineConfig(
   var maxCallDepth: Int = 4,
   initialTable: Option[mutable.Map[TaskFingerprint, Vector[ReachableByResult]]] = None,
   shareCacheBetweenTasks: Boolean = true,
   maxArgsToAllow: Int = 1000,
-  maxOutputArgsExpansion: Int = 1000
+  maxOutputArgsExpansion: Int = 1000,
+  numWorkers: Int = Runtime.getRuntime.availableProcessors
 )
 
 /** Tracks various performance characteristics of the query engine.
