@@ -26,7 +26,7 @@ class Engine(context: EngineContext, workers: Integer = -1) {
   import Engine.*
 
   private val logger: Logger                   = LoggerFactory.getLogger(this.getClass)
-  private val executorService: ExecutorService = Executors.newWorkStealingPool(if(workers < 0) RunTime.getRunTime.availableProcessors else workers)
+  private val executorService: ExecutorService = Executors.newWorkStealingPool(context.numWorkers)
   private val completionService =
     new ExecutorCompletionService[TaskSummary](executorService)
 
@@ -318,13 +318,16 @@ case class EngineContext(semantics: Semantics = DefaultSemantics(), config: Engi
   *   max limit to determine all corresponding arguments at all call sites to the method
   * @param maxOutputArgsExpansion
   *   max limit on number arguments for which tasks will be created for unresolved arguments
+  * @param numWorkers
+  *   number of parallel workers that should be used
   */
 case class EngineConfig(
   var maxCallDepth: Int = 4,
   initialTable: Option[mutable.Map[TaskFingerprint, Vector[ReachableByResult]]] = None,
   shareCacheBetweenTasks: Boolean = true,
   maxArgsToAllow: Int = 1000,
-  maxOutputArgsExpansion: Int = 1000
+  maxOutputArgsExpansion: Int = 1000,
+  numWorkers: Int = Runtime.getRuntime.availableProcessors,
 )
 
 /** Tracks various performance characteristics of the query engine.
