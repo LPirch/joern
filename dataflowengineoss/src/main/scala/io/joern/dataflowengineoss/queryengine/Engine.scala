@@ -14,18 +14,19 @@ import java.util.concurrent.*
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
+import java.lang.RunTime
 
 /** The data flow engine allows determining paths to a set of sinks from a set of sources. To this end, it solves tasks
   * in parallel, creating and submitting new tasks upon completion of tasks. This class deals only with task scheduling,
   * while the creation of new tasks from existing tasks is handled by the class `TaskCreator`, and solving of tasks is
   * taken care of by the `TaskSolver`.
   */
-class Engine(context: EngineContext) {
+class Engine(context: EngineContext, workers: Integer = -1) {
 
   import Engine.*
 
   private val logger: Logger                   = LoggerFactory.getLogger(this.getClass)
-  private val executorService: ExecutorService = Executors.newWorkStealingPool()
+  private val executorService: ExecutorService = Executors.newWorkStealingPool(if(workers < 0) RunTime.getRunTime.availableProcessors else workers)
   private val completionService =
     new ExecutorCompletionService[TaskSummary](executorService)
 
