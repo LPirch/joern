@@ -123,9 +123,9 @@ trait AstForStatementsCreator(implicit withSchemaValidation: ValidationMode) { t
 
   private def astForTryStatement(tryStmt: ICPPASTTryBlockStatement): Ast = {
     val tryNode = controlStructureNode(tryStmt, ControlStructureTypes.TRY, "try")
-    val body    = nullSafeAst(tryStmt.getTryBody)
+    val body    = nullSafeAst(tryStmt.getTryBody, 1)
     val catches = tryStmt.getCatchHandlers.zipWithIndex.map { case (h, index) =>
-      astForCatchHandler(h, index + 1)
+      astForCatchHandler(h, index + 2)
     }.toIndexedSeq
     Ast(tryNode).withChildren(body).withChildren(catches)
   }
@@ -133,8 +133,8 @@ trait AstForStatementsCreator(implicit withSchemaValidation: ValidationMode) { t
   private def astForCatchHandler(catchHandler: ICPPASTCatchHandler, argIndex: Int): Ast = {
     val catchNode =
       controlStructureNode(catchHandler, ControlStructureTypes.CATCH, "catch").order(argIndex).argumentIndex(argIndex)
-    val declAst = astsForDeclaration(catchHandler.getDeclaration)
-    val bodyAst = astsForStatement(catchHandler.getCatchBody)
+    val declAst = nullSafeAst(catchHandler.getDeclaration)
+    val bodyAst = nullSafeAst(catchHandler.getCatchBody)
     Ast(catchNode).withChildren(declAst).withChildren(bodyAst)
   }
 

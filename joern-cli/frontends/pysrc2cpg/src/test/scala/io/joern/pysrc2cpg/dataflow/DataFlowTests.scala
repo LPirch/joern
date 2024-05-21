@@ -22,6 +22,17 @@ class DataFlowTests extends PySrc2CpgFixture(withOssDataflow = true) {
     sink.reachableByFlows(source).size shouldBe 1
   }
 
+  "intra-procedural 2" in {
+    val cpg = code("""
+        |x = foo(20)
+        |print(x)
+        |""".stripMargin)
+    val source     = cpg.literal("20")
+    val sink       = cpg.call("print").argument
+    val List(flow) = sink.reachableByFlows(source).map(flowToResultPairs).distinct.sortBy(_.length).l
+    flow shouldBe List(("foo(20)", 2), ("x = foo(20)", 2), ("print(x)", 3))
+  }
+
   "chained call" in {
     val cpg: Cpg = code("""
       |a = 42
@@ -324,6 +335,80 @@ class DataFlowTests extends PySrc2CpgFixture(withOssDataflow = true) {
     method.fullName shouldBe "models.py:<module>.Foo.__init__"
     val List(typeDeclFullName) = method.typeDecl.fullName.l
     typeDeclFullName shouldBe "models.py:<module>.Foo"
+  }
+
+  "flow from global variable defined in imported file and used as argument to `print`" in {
+    val cpg = code("""
+        |from models import FOOBAR
+        |print(FOOBAR)
+        |""".stripMargin)
+      .moreCode(
+        """
+          |FOOBAR = "XYZ"
+          |""".stripMargin,
+        fileName = "models.py"
+      )
+    def sink       = cpg.call("print").argument.argumentIndex(1)
+    def source     = cpg.literal("\"XYZ\"")
+    val List(flow) = sink.reachableByFlows(source).map(flowToResultPairs).l
+    flow shouldBe List(("FOOBAR = \"XYZ\"", 2), ("FOOBAR = import(models, FOOBAR)", 2), ("print(FOOBAR)", 3))
+  }
+
+  "flow from global variable defined in imported file and used inside a method as argument to `print`" in {
+    val cpg = code("""
+        |from models import FOOBAR
+        |def run():
+        |   print(FOOBAR)
+        |""".stripMargin)
+      .moreCode(
+        """
+          |FOOBAR = "XYZ"
+          |""".stripMargin,
+        fileName = "models.py"
+      )
+
+    def sink       = cpg.call("print").argument.argumentIndex(1)
+    def source     = cpg.literal("\"XYZ\"")
+    val List(flow) = sink.reachableByFlows(source).map(flowToResultPairs).l
+    flow shouldBe List(("FOOBAR = \"XYZ\"", 2), ("FOOBAR = import(models, FOOBAR)", 2), ("print(FOOBAR)", 4))
+  }
+
+  "flow from global variable defined in imported file and used as argument to another module's imported method" in {
+    val cpg = code("""
+        |import service
+        |from models import FOOBAR
+        |def run():
+        |   service.doThing(FOOBAR)
+        |""".stripMargin)
+      .moreCode(
+        """
+          |FOOBAR = "XYZ"
+          |""".stripMargin,
+        fileName = "models.py"
+      )
+
+    def sink       = cpg.call("doThing").argument.argumentIndex(1)
+    def source     = cpg.literal("\"XYZ\"")
+    val List(flow) = sink.reachableByFlows(source).map(flowToResultPairs).l
+    flow shouldBe List(("FOOBAR = \"XYZ\"", 2), ("FOOBAR = import(models, FOOBAR)", 3), ("service.doThing(FOOBAR)", 5))
+  }
+
+  "flow from global variable defined in imported file and used as field access to `print`" in {
+    val cpg = code("""
+        |import models
+        |print(models.FOOBAR)
+        |""".stripMargin)
+      .moreCode(
+        """
+          |FOOBAR = "XYZ"
+          |""".stripMargin,
+        fileName = "models.py"
+      )
+
+    def sink       = cpg.call("print").argument.argumentIndex(1)
+    def source     = cpg.literal("\"XYZ\"")
+    val List(flow) = sink.reachableByFlows(source).map(flowToResultPairs).l
+    flow shouldBe List(("FOOBAR = \"XYZ\"", 2), ("models = import(, models)", 2), ("print(models.FOOBAR)", 3))
   }
 
 }

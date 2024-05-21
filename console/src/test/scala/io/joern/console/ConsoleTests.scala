@@ -126,6 +126,25 @@ class ConsoleTests extends AnyWordSpec with Matchers {
       }
     }
 
+    "allow importing code from file with Swift frontend via apply" in ConsoleFixture() { (console, _) =>
+      val code = "func foo() {};"
+      File.usingTemporaryFile("consoleTests", ".swift") { tmpFile =>
+        tmpFile.write(code)
+        console.importCode(tmpFile.pathAsString)
+        Set("foo").subsetOf(console.cpg.method.name.toSet) shouldBe true
+      }
+    }
+
+    "allow importing code from file with Swift frontend" taggedAs NotInWindowsRunners in ConsoleFixture() {
+      (console, _) =>
+        val code = "func foo() {};"
+        File.usingTemporaryFile("consoleTests", ".swift") { tmpFile =>
+          tmpFile.write(code)
+          console.importCode.swiftsrc(tmpFile.pathAsString)
+          Set("foo").subsetOf(console.cpg.method.name.toSet) shouldBe true
+        }
+    }
+
     "allow importing code and setting project name" in ConsoleFixture() { (console, codeDir) =>
       val projectName = "test"
       console.importCode(codeDir.toString, projectName)
@@ -339,7 +358,7 @@ class ConsoleTests extends AnyWordSpec with Matchers {
       )
       val numOverlayFilesBefore = console.project.path.resolve("overlays").toFile.list().length
       numOverlayFilesBefore shouldBe 4
-      console._runAnalyzer(defaultOverlayCreators(): _*)
+      console._runAnalyzer(defaultOverlayCreators()*)
       console.project.appliedOverlays shouldBe List(
         Base.overlayName,
         ControlFlow.overlayName,
