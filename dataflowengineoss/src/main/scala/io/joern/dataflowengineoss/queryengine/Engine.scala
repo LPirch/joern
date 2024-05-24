@@ -26,7 +26,7 @@ class Engine(context: EngineContext) {
   import Engine.*
 
   private val logger: Logger                   = LoggerFactory.getLogger(this.getClass)
-  private val executorService: ExecutorService = Executors.newWorkStealingPool(context.config.numWorkers)
+  private val executorService: ExecutorService = Executors.newFixedThreadPool(context.config.numWorkers)
   private val completionService =
     new ExecutorCompletionService[TaskSummary](executorService)
 
